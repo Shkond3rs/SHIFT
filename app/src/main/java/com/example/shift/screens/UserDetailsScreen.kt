@@ -3,29 +3,20 @@ package com.example.shift.screens
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
-
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -36,13 +27,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.composables.icons.lucide.Cake
 import com.composables.icons.lucide.CalendarPlus2
@@ -77,8 +68,7 @@ import java.util.Locale
 @Composable
 fun UserDetailsScreen(
     mod: Modifier = Modifier,
-    viewmodel: AppViewModel,
-    onCallClick: () -> Unit = {}
+    viewmodel: AppViewModel
 ) {
     val user = viewmodel.selectedUser!!
 
@@ -174,7 +164,10 @@ fun MainCard(mod: Modifier = Modifier, user: User) {
 
 @Composable
 fun TextWithIcon(msg: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
         Icon(
             Icons.Filled.LocationOn,
             contentDescription = "location icon",
@@ -196,7 +189,6 @@ fun TextWithIcon(mod: Modifier = Modifier, icon: ImageVector, title: String, dat
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        //TODO: Настроить размер иконки
         Icon(
             imageVector = icon,
             contentDescription = "$icon",
@@ -248,7 +240,11 @@ fun PersonalInfoCard(mod: Modifier = Modifier, user: User) {
                 title = "Дата рождения",
                 data = formatBirthDateWithAge(user.dob.date)
             )
-            if (!user.id.value.isNullOrEmpty()) TextWithIcon(icon = Lucide.IdCard, title = "ID", data = "${user.id.name}: ${user.id.value}")
+            if (!user.id.value.isNullOrEmpty()) TextWithIcon(
+                icon = Lucide.IdCard,
+                title = "ID",
+                data = "${user.id.name}: ${user.id.value}"
+            )
         }
 
     }
@@ -256,6 +252,8 @@ fun PersonalInfoCard(mod: Modifier = Modifier, user: User) {
 
 @Composable
 fun ContactInformationCard(mod: Modifier = Modifier, user: User) {
+    val context = LocalContext.current
+
     Card(
         modifier = mod.fillMaxWidth(),
         shape = RoundedCornerShape(
@@ -265,13 +263,40 @@ fun ContactInformationCard(mod: Modifier = Modifier, user: User) {
             bottomStart = 8.dp
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-        Column(mod.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
+        Column(
+            mod
+                .fillMaxWidth()
+                .padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Text(modifier = mod.fillMaxWidth(), text = "Контактная информация")
-            //TODO: Сделать их кликабельными
-            TextWithIcon(icon = Lucide.Mail, title = "Email", data = user.email)
-            TextWithIcon(icon = Lucide.Phone, title = "Телефон", data = user.phone)
-            TextWithIcon(icon = Lucide.Smartphone, title = "Мобильный", data = user.cell)
+            TextWithIcon(
+                icon = Lucide.Mail, title = "Email", data = user.email,
+                mod = mod.clickable {
+                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = "mailto:${user.email}".toUri()
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Отправить email"))
+                }
+            )
+            TextWithIcon(
+                icon = Lucide.Phone, title = "Телефон", data = user.phone,
+                mod = mod.clickable {
+                    val intent = Intent(Intent.ACTION_DIAL).apply {
+                        data = "tel:${user.phone}".toUri()
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Позвонить"))
+                }
+            )
+            TextWithIcon(
+                icon = Lucide.Smartphone, title = "Мобильный", data = user.cell,
+                mod = mod.clickable {
+                    val intent = Intent(Intent.ACTION_DIAL).apply {
+                        data = "tel:${user.cell}".toUri()
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Позвонить"))
+                })
         }
 
     }
@@ -279,9 +304,15 @@ fun ContactInformationCard(mod: Modifier = Modifier, user: User) {
 
 @Composable
 fun AddressCard(mod: Modifier = Modifier, user: User) {
-    //TODO: Сделать кликабельной всю карточку
+    val context = LocalContext.current
     Card(
-        modifier = mod.fillMaxWidth(),
+        modifier = mod.fillMaxWidth().clickable {
+            val address = "${user.location.street.name} ${user.location.street.number}, ${user.location.city}, ${user.location.country}"
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                data = "geo:0,0?q=$address".toUri()
+            }
+            context.startActivity(Intent.createChooser(intent, "Открыть карту"))
+        },
         shape = RoundedCornerShape(
             topStart = 24.dp,
             bottomEnd = 24.dp,
@@ -289,7 +320,8 @@ fun AddressCard(mod: Modifier = Modifier, user: User) {
             bottomStart = 8.dp
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
         Column(mod.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(text = "Адрес")
             TextWithIcon(
@@ -324,10 +356,10 @@ fun AdditionalInfoCard(mod: Modifier = Modifier, user: User) {
             bottomStart = 8.dp
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
         Column(mod.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(text = "Контактная информация")
-            //TODO: Сделать их кликабельными
             TextWithIcon(icon = Lucide.User, title = "Имя пользователя", data = user.email)
             TextWithIcon(
                 icon = Lucide.CalendarPlus2,
@@ -411,6 +443,7 @@ private fun ScreenPrev1() {
         }
     }
 }
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Preview(showSystemUi = true, showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
