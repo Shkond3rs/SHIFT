@@ -2,7 +2,6 @@ package com.example.shift.screens
 
 import android.content.res.Configuration
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,11 +18,16 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
@@ -36,7 +40,6 @@ import coil3.compose.AsyncImage
 import com.example.shift.AppViewModel
 import com.example.shift.R
 import com.example.shift.User
-import com.example.shift.toUser
 import com.example.shift.ui.theme.SHIFTTheme
 import com.example.shift.ui.theme.nunitoRegular
 
@@ -73,31 +76,41 @@ fun UserListScreen(
     viewmodel: AppViewModel,
     onUserClick: (User) -> Unit
 ) {
-    Column(
-        modifier = mod
-            .statusBarsPadding()
-            .padding(16.dp)
-            .fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        val users by viewmodel.users.collectAsState()
-        LazyColumn(
-            modifier = mod
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            items(users) {
-                MainCard(user = it, onUserClick = onUserClick)
-            }
+    val users by viewmodel.users.collectAsState()
+    val errorMessage by viewmodel.errorMessage.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewmodel.clearError()
         }
-        Row(horizontalArrangement = Arrangement.SpaceBetween) {
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        Column(
+            modifier = mod
+                .statusBarsPadding()
+                .padding(16.dp)
+                .fillMaxSize()
+                .padding(padding),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            LazyColumn(
+                modifier = mod
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                items(users) {
+                    MainCard(user = it, onUserClick = onUserClick)
+                }
+            }
             Button(onClick = { viewmodel.refreshUsers() }) {
                 Text(text = "Обновить")
-            }
-            //TODO: Удалить
-            Button(onClick = { viewmodel.clearDatabase() }) {
-                Text(text = "Удалить")
             }
         }
     }

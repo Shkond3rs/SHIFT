@@ -7,6 +7,7 @@ import com.example.shift.db.SHIFTDatabase
 import com.example.shift.db.UserDao
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -19,6 +20,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application = ap
     private val _users = MutableStateFlow<List<User>>(emptyList())
     val users: StateFlow<List<User>> = _users
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage
+
 
     var selectedUser: User? = null
 
@@ -26,15 +30,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application = ap
         loadUsersFromDatabase()
     }
 
-    private fun loadUsersFromDatabase() {
-        viewModelScope.launch {
-            if (isDatabaseEmpty()) {
-                fetchAndSaveUsers()
-            } else {
-                observeUsersFromDatabase()
-            }
-        }
-    }
 
     fun refreshUsers() {
         viewModelScope.launch {
@@ -49,11 +44,32 @@ class AppViewModel(application: Application) : AndroidViewModel(application = ap
         }
     }
 
+    fun clearError() {
+        _errorMessage.value = null
+    }
+
+    private fun loadUsersFromDatabase() {
+        viewModelScope.launch {
+            try {
+                if (isDatabaseEmpty()) {
+                    fetchAndSaveUsers()
+                } else {
+                    observeUsersFromDatabase()
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Ошибка загрузки из базы: ${e.localizedMessage ?: "Неизвестная ошибка"}"
+            }
+        }
+    }
+
     private fun observeUsersFromDatabase() {
         viewModelScope.launch {
             userDao.getAllUsersFlow()
                 .map { userEntities ->
                     userEntities.map { entity -> entity.toUser() }
+                }
+                .catch { e ->
+                    _errorMessage.value = "Ошибка чтения из базы: ${e.localizedMessage ?: "Неизвестная ошибка"}"
                 }
                 .collect { userList ->
                     _users.value = userList
@@ -62,12 +78,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application = ap
     }
 
     private suspend fun fetchAndSaveUsers() {
-        val usersFromApi = fetchUsersFromApi()
-        usersFromApi?.let {
-            _users.value = it
-            userDao.insertUsers(it.map { user ->
-                user.toEntity()
-            })
+        try {
+            val usersFromApi = fetchUsersFromApi()
+            if (usersFromApi != null) {
+                _users.value = usersFromApi
+                userDao.insertUsers(usersFromApi.map { user -> user.toEntity() })
+            } else {
+                // Если fetchUsersFromApi вернул null, значит там уже установлено сообщение об ошибке
+                // Можно добавить дополнительную обработку, если нужно
+            }
+        } catch (e: Exception) {
+            _errorMessage.value = "Ошибка сохранения пользователей: ${e.localizedMessage ?: "Неизвестная ошибка"}"
         }
     }
 
@@ -76,19 +97,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application = ap
             val response = RetrofitClient.randomUserAPIService.getRandomUsers(15)
             response.results
         } catch (e: Exception) {
-            e.printStackTrace()
+            _errorMessage.value = "Ошибка при загрузке пользователей: ${e.localizedMessage ?: "Неизвестная ошибка"}"
             null
         }
     }
 
-    //TODO: заменить в будущем запрос на выгрузку первого пользователя, ведь если он будет выбран, то значит данные в БД существуют
     private suspend fun isDatabaseEmpty(): Boolean {
         return userDao.getUsersCount() == 0
     }
 
-    fun clearDatabase() {
-        viewModelScope.launch {
-            userDao.deleteAllUsers()
-        }
-    }
 }

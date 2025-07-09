@@ -18,7 +18,7 @@ abstract class SHIFTDatabase : RoomDatabase() {
         fun getDb(context: Context): SHIFTDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(context.applicationContext, SHIFTDatabase::class.java, "shift_database")
-                    .fallbackToDestructiveMigration(true)       //TODO: Возможно удалить перед завершением работы
+                    .fallbackToDestructiveMigration(true)
                     .build()
                 INSTANCE = instance
                 instance

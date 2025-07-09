@@ -1,6 +1,8 @@
 package com.example.shift
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -15,6 +17,7 @@ object NavRoutes {
 }
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun RandomUserNavGraph(
     navController: NavHostController,
@@ -25,8 +28,6 @@ fun RandomUserNavGraph(
             UserListScreen(
                 viewmodel = appViewModel,
                 onUserClick = { user ->
-                    //TODO: delete
-                    Log.d("USER: ", user.toString())
                     appViewModel.selectedUser = user
                     navController.navigate(NavRoutes.USER_DETAILS)
                 }
